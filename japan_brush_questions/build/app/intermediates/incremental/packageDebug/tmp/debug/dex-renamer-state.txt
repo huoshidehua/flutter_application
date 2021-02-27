@@ -1,4 +1,4 @@
-#Fri Feb 26 16:37:14 JST 2021
-base.0=E\:\\github\\flutterWorkspace\\myapp\\myapp\\build\\app\\intermediates\\dex\\debug\\mergeDexDebug\\out\\classes.dex
+#Sat Feb 27 12:44:14 JST 2021
+base.0=E\:\\github\\flutterWorkspace\\flutteApplicaion\\japan_brush_questions\\build\\app\\intermediates\\dex\\debug\\mergeDexDebug\\out\\classes.dex
 path.0=classes.dex
 renamed.0=classes.dex

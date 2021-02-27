@@ -15,18 +15,32 @@ class QuestionPaper extends StatefulWidget {
   // 模块 0:综合，1 文字词汇 2语法 3阅读 4听力
   int questionType;
 
+  QuestionPaper({@required this.level, @required this.questionType});
+
+  @override
+  createState() => _QuestionPaperState();
+}
+
+class _QuestionPaperState extends State<QuestionPaper> {
   List<Question> questions = List.empty();
+  PageController controller;
+  ScrollController numbersController;
+  Question question;
 
-  QuestionPaper({@required this.level, @required this.questionType}) {
-    loadQuestions() async{
-      ApiResponse<List<Question>> response = await QuestionsDao.getQuestions(level, questionType);
-      questions =  response.data;
-    }
-    loadQuestions();
-    print(questions.length);
-    // loadQuestions();
+  @override
+  void initState() {
+    super.initState();
+    controller = PageController();
+    numbersController =  ScrollController();
+    QuestionsDao.getQuestions(widget.level, widget.questionType).then((value) {
+      setState(() {
+        print("*******************加载题目数据***********************");
+        questions = value.data;
+        question = questions.first;
+        print(questions.length);
+      });
+    });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +70,7 @@ class QuestionPaper extends StatefulWidget {
           },
         ),
         middle: Text(
-          level + questionType.toString(),
+          widget.level + widget.questionType.toString(),
           style: TextStyle(color: textColor),
         ),
         backgroundColor: mainColor,
@@ -89,47 +103,40 @@ class QuestionPaper extends StatefulWidget {
           children: [
             /// 题目标号
             Container(
-              height: 100,
+              height: 80,
+              alignment: Alignment.bottomLeft,
               padding: const EdgeInsets.fromLTRB(2.0, 10.0, 2.0, 10.0),
               child: ListView.separated(
+                controller: numbersController,
                 physics: BouncingScrollPhysics(),
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
                 separatorBuilder: (context, index) => Container(width: 16),
                 itemBuilder: (context, index) {
-                  return buildNumber(index: index, isSelected: false);
+                  final isSelected = question == questions[index];
+                  return buildNumber(
+                      index: index,
+                      isSelected: isSelected,
+                      onClickedNumber: (index) {
+                        /// 下个点击的题目
+                        nextQuestion(index: index, jump: true);
+                      });
                 },
-                itemCount: 16,
+                itemCount: questions.length,
               ),
             ),
 
             /// 题目
             Expanded(
               child: PageView.builder(
-                onPageChanged: (value) => {},
-                controller: PageController(),
-                itemCount: 16,
+                onPageChanged: (value){
+                  nextQuestion(index: value);
+                },
+                controller: controller,
+                itemCount: questions.length,
                 itemBuilder: (context, index) {
-                  // final question = category.questions[index];
-
-                  return buildQuestion(
-                    question: Question(
-                      text: "aaaaaaa",
-                      options: [
-                        Option(text: "A OOPTION", code: "A", correct: true),
-                        Option(text: "A OOPTION", code: "A", correct: false),
-                        Option(text: "A OOPTION", code: "A", correct: false),
-                        Option(text: "A OOPTION", code: "A", correct: false),
-                        Option(text: "A OOPTION", code: "A", correct: false),
-                        Option(text: "A OOPTION", code: "A", correct: false),
-                        Option(text: "A OOPTION", code: "A", correct: false),
-                        Option(text: "A OOPTION", code: "A", correct: false),
-                        Option(text: "A OOPTION", code: "A", correct: false),
-                        Option(text: "A OOPTION", code: "A", correct: false),
-                      ],
-                      solution: "i can't beleve",
-                    ),
-                  );
+                  final question = questions[index];
+                  return buildQuestion(question: question);
                 },
               ),
             )
@@ -139,63 +146,64 @@ class QuestionPaper extends StatefulWidget {
     );
   }
 
-  @override
-  State<StatefulWidget> createState() {
-    throw UnimplementedError();
+  /// 创建 题目
+  Widget buildQuestion({Question question}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// const SizedBox(height: 0),
+          Text(
+            question.text,
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Choose your answer from below',
+            style: TextStyle(fontStyle: FontStyle.italic, fontSize: 16),
+          ),
+          SizedBox(height: 32),
+          Expanded(
+            child: OptionsWidget(
+              question: question,
+              onClickedOption: (Option option) {
+                if (question.locked) {
+                  return;
+                } else {
+                  setState(() {
+                    question.locked = true;
+                    question.selectedOption = option;
+                  });
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 跳到下一题
+  void nextQuestion({int index, bool jump = false}) {
+    final nextPage = controller.page + 1;
+    final indexPage = index ?? nextPage.toInt();
+
+    setState(() {
+      question = questions[indexPage];
+    });
+
+    if (jump) {
+      controller.animateToPage(indexPage,duration: Duration(milliseconds: 200), curve: Curves.easeInOut);
+    }
   }
 }
 
-
-
-
-///
-Widget buildQuestion({
-  @required Question question,
-}) {
-  return Container(
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 32),
-        Text(
-          question.text,
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
-        ),
-        SizedBox(height: 8),
-        Text(
-          'Choose your answer from below',
-          style: TextStyle(fontStyle: FontStyle.italic, fontSize: 16),
-        ),
-        SizedBox(height: 32),
-        Expanded(
-          child: OptionsWidget(
-            question: question,
-            onClickedOption: (Option option) {
-              if (question.locked) {
-                return;
-              } else {
-                /*setState(() {
-                  question.isLocked = true;
-                  question.selectedOption = option;
-                });*/
-              }
-            },
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget buildNumber({
-  @required int index,
-  @required bool isSelected,
-}) {
+Widget buildNumber({@required int index, @required bool isSelected, ValueChanged<int> onClickedNumber}) {
   final color = isSelected ? Colors.orange.shade300 : Colors.white;
 
   return GestureDetector(
-    onTap: () => {},
+    onTap: () => onClickedNumber(index),
     child: CircleAvatar(
       radius: 30,
       backgroundColor: color,
